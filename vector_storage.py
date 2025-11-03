@@ -3,6 +3,7 @@ from qdrant_client.models import VectorParams, Distance, PointStruct
 from typing import List
 from dataclasses import asdict
 import uuid
+import os 
 
 from document_chunker import DocumentChunk
 
@@ -25,6 +26,7 @@ class VectorStorage:
     def _load_client(self):
         try:
             if self.path:
+                os.makedirs(self.path, exist_ok=True)
                 self.client = QdrantClient(path=self.path)
                 print(f"Connected to Qdrant at path: {self.path}")
             else:
@@ -94,4 +96,32 @@ class VectorStorage:
             return len(result[0]) > 0
         except Exception as e:
             print(f"Error checking file existence: {e}")
+            raise e
+    
+    def delete_collection(self) -> bool:
+        try:
+            if not self.client.collection_exists(self.collection_name):
+                print(f"Collection {self.collection_name} does not exist.")
+                return False
+            self.client.delete_collection(collection_name=self.collection_name)
+            print(f"Deleted collection: {self.collection_name}")
+            return True
+        except Exception as e:
+            print(f"Error deleting collection: {e}")
+            raise e
+
+    def get_collection_info(self):
+        try:
+            if not self.client.collection_exists(self.collection_name):
+                return {"exists": False, "message": f"Collection {self.collection_name} does not exist"}
+            collection_info = self.client.get_collection(collection_name=self.collection_name)
+            return {"exists": True, 
+                    "name":self.collection_name,
+                    "points_count": collection_info.points_count,
+                    "vectors_count": collection_info.vectors_count,
+                    "vector_size": collection_info.config.params.vectors.size,
+                    "distance_metric": collection_info.config.params.vectors.distance.value
+                }
+        except Exception as e:
+            print(f"Error getting collection info: {e}")
             raise e

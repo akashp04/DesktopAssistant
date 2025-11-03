@@ -6,9 +6,12 @@ import uvicorn
 import logging
 from typing import List, Optional, Dict, Any, Union
 import time
+import os
+
 
 from embedding_manager import EmbeddingManager
 from vector_storage import VectorStorage
+from pipeline import Pipeline
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,6 +45,34 @@ class QueryResponse(BaseModel):
     results: List[SearchResult]
     total_results: int
     processing_time_ms: float
+
+class IngestRequest(BaseModel):
+    directory_path: str = Field(..., description="Path to the directory to ingest files from.", min_length=1)
+    skip_existing: bool = Field(True, description="Whether to skip files that are already indexed.")
+    chunk_size: int = Field(400, description="Chunk size for document chunking.", ge=1, le=512)
+    overlap: int = Field(100, description="Overlap size for document chunking.", ge=0, le=511)
+
+class IngestResponse(BaseModel):
+    message: str
+    directory_path: str
+    files_processed: int
+    files_skipped: int
+    failed_files: int
+    total_chunks: int
+    processing_time_ms: float
+    status: str
+
+class CreateCollectionResponse(BaseModel):
+    message: str
+    collection_name: str
+    created: bool
+    status: str
+
+class DeleteCollectionResponse(BaseModel):
+    message: str
+    collection_name: str
+    deleted: bool
+    status: str
 
 class QueryService:
     def __init__(self, 
@@ -130,6 +161,40 @@ class QueryService:
                 )
         return Filter(must=conditions) if conditions else None
 
+    def ingest(self, request: IngestRequest) -> IngestResponse:
+        if not os.path.exists(request.directory_path):
+            raise HTTPException(status_code=400, detail=f"Directory does not exist: {request.directory_path}")
+        if not os.path.isdir(request.directory_path):
+            raise HTTPException(status_code=400, detail=f"Path is not a directory: {request.directory_path}")
+        if request.chunk_size <= request.overlap:
+            raise HTTPException(status_code=400, detail="Chunk size must be greater than overlap.")
+        
+        start = time.monotonic()
+        try:
+            self.pipeline = Pipeline(
+                base_directory = request.directory_path,
+                embedding_model = self.embedding_manager.embedding_model,
+                vector_storage = self.vector_storage,
+                chunk_size = request.chunk_size,
+                overlap = request.overlap,
+            )
+            result = self.pipeline.index_directory(skip_existing = request.skip_existing)
+            end = time.monotonic()
+            processing_time_ms = (end - start) * 1000
+            return IngestResponse(
+                message = "Ingestion completed successfully",
+                directory_path = request.directory_path,
+                files_processed = result['processed_files'],
+                files_skipped = result['skipped_files'],
+                failed_files = result['failed_files'],
+                total_chunks = result['total_chunks'],
+                processing_time_ms = round(processing_time_ms, 2),
+                status = "success"
+            )
+        except Exception as e:
+            logger.error(f"Error during ingestion: {e}")
+            raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+
 query_service = QueryService(
     qdrant_host="localhost",
     qdrant_port=6333,
@@ -159,37 +224,87 @@ async def health_check():
 async def search_documents(request: QueryRequest):
     return query_service.search(request)
 
-@app.get("/search", response_model=QueryResponse, tags=["Search"])
-async def search_documents_get(
-    q: str = Query(..., description="Search query"),
-    top_k: int = Query(5, description="Number of results", ge=1, le=100),
-    score_threshold: float = Query(0.0, description="Minimum score", ge=0.0, le=1.0)
-):
-    request = QueryRequest(
-        query=q,
-        top_k=top_k,
-        score_threshold=score_threshold
-    )
-    return query_service.search(request)
+# @app.get("/search", response_model=QueryResponse, tags=["Search"])
+# async def search_documents_get(
+#     q: str = Query(..., description="Search query"),
+#     top_k: int = Query(5, description="Number of results", ge=1, le=100),
+#     score_threshold: float = Query(0.0, description="Minimum score", ge=0.0, le=1.0)
+# ):
+#     request = QueryRequest(
+#         query=q,
+#         top_k=top_k,
+#         score_threshold=score_threshold
+#     )
+#     return query_service.search(request)
+@app.post("/ingest", response_model=IngestResponse, tags=["Admin"])
+async def ingest_documents(request: IngestRequest):
+    return query_service.ingest(request)
 
 @app.get("/collections/info", tags=["Admin"])
 async def get_collection_info():
     try:
-        collection_info = query_service.vector_storage.client.get_collection(
-            query_service.vector_storage.collection_name
-        )
-        return {
-            "collection_name": query_service.vector_storage.collection_name,
-            "points_count": collection_info.points_count,
-            "vectors_count": collection_info.vectors_count,
-            "status": collection_info.status,
-            "config": {
-                "vector_size": collection_info.config.params.vectors.size,
-                "distance": collection_info.config.params.vectors.distance.value
-            }
-        }
+        collection_info = query_service.vector_storage.get_collection_info()
+        return collection_info
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Collection not found: {str(e)}")
+
+@app.post("/collections/{collection_name}/create", response_model=CreateCollectionResponse, tags=["Admin"])
+async def create_collection(collection_name: str):
+    try:
+        temp_storage = VectorStorage(
+            host=query_service.vector_storage.host,
+            port=query_service.vector_storage.port,
+            path=query_service.vector_storage.path,
+            collection_name=collection_name,
+            vector_size=384  
+        )
+        
+        return CreateCollectionResponse(
+            message=f"Collection '{collection_name}' created successfully",
+            collection_name=collection_name,
+            created=True,
+            status="success"
+        )
+    except Exception as e:
+        logger.error(f"Error creating collection {collection_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create collection: {str(e)}")
+    
+@app.get("/collections/{collection_name}/info", tags=["Admin"])
+async def get_collection_details(collection_name: str):
+    try:
+        temp_storage = VectorStorage(
+            host=query_service.vector_storage.host,
+            port=query_service.vector_storage.port,
+            path=query_service.vector_storage.path,
+            collection_name=collection_name
+        )
+
+        collection_info = temp_storage.get_collection_info()
+        return collection_info
+    except Exception as e:
+        logger.error(f"Error getting collection info for {collection_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get collection info: {str(e)}")
+
+
+@app.delete("/collections/{collection_name}", response_model=DeleteCollectionResponse, tags=["Admin"])
+async def delete_collection(collection_name: str):
+    try:
+        temp_storage = VectorStorage(
+            host=query_service.vector_storage.host,
+            port=query_service.vector_storage.port,
+            path=query_service.vector_storage.path,
+            collection_name=collection_name
+        )
+        deleted = temp_storage.delete_collection()
+        return DeleteCollectionResponse(
+            message = f"Collection '{collection_name}' deleted successfully." if deleted else f"Collection '{collection_name}' does not exist.",
+            collection_name = collection_name,
+            deleted = deleted,
+            status = "success" if deleted else "not_found"
+        )
+    except Exception as e:
+        logger.error(f"Error deleting collection: {e}")
+        raise HTTPException(status_code=500, detail=f"Error deleting collection: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(

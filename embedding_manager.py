@@ -1,6 +1,8 @@
 from typing import List
 import numpy as np
 from sentence_transformers import SentenceTransformer
+import threading
+from threading import Lock
 
 from document_chunker import DocumentChunk
 
@@ -8,6 +10,7 @@ class EmbeddingManager:
     def __init__(self, embedding_model: str = "BAAI/bge-small-en-v1.5"):
         self.model = None
         self.embedding_model = embedding_model
+        self.model_lock = Lock()
         self._load_model()
     
     def _load_model(self):
@@ -26,8 +29,15 @@ class EmbeddingManager:
             raise ValueError("No document chunks provided for embedding generation.")
         try:
             text = [chunk.chunk_text for chunk in chunks]
-            embeddings = self.model.encode(text, show_progress_bar=True, batch_size=32)
-            return embeddings.tolist()
+            with self.model_lock:
+                embeddings = self.model.encode(
+                    text, 
+                    batch_size=8,
+                    show_progress_bar=False, 
+                    convert_to_tensor=False,
+                    normalize_embeddings=True
+                )
+            return embeddings.tolist() if hasattr(embeddings, 'tolist') else embeddings
         except Exception as e:
             print(f"Error generating embeddings: {e}")
             raise e
