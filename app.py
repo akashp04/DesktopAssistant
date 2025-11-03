@@ -98,7 +98,7 @@ class QueryService:
             # query_embedding = self.embedding_manager.model.encode([request.query])[0].tolist()
             query_embedding = self.embedding_manager.generate_query_embedding([request.query])
             search_filter = self._build_filter(request.file_type, request.file_name)
-            search_results = self.vector_storage.client.search(
+            search_results = self.vector_storage.search_query(
                 collection_name = self.vector_storage.collection_name,
                 query_vector = query_embedding,
                 limit = request.top_k,

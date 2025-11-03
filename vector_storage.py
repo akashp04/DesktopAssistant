@@ -1,6 +1,6 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import VectorParams, Distance, PointStruct
-from typing import List
+from qdrant_client.models import VectorParams, Distance, PointStruct, Filter
+from typing import List, Optional
 from dataclasses import asdict
 import uuid
 import os 
@@ -97,7 +97,21 @@ class VectorStorage:
         except Exception as e:
             print(f"Error checking file existence: {e}")
             raise e
-    
+
+    def search_query(self, collection_name: str, query_embedding: List[float], top_k: int, score_threshold: float, search_filter: Optional[Filter]) -> List[dict]:
+        try:
+            search_results = self.client.search(
+                collection_name=self.collection_name,
+                query_vector=query_embedding,
+                limit=top_k,
+                score_threshold=score_threshold,
+                query_filter=search_filter
+            )
+            return search_results
+        except Exception as e:
+            print(f"Error during search query: {e}")
+            raise e
+
     def delete_collection(self) -> bool:
         try:
             if not self.client.collection_exists(self.collection_name):
