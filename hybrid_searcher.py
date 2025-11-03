@@ -15,13 +15,10 @@ class HybridSearch:
         return self._combine_results(semantic_results, vector_results)
 
     def _semantic_search(self, query: str, top_k: int, score_threshold: float, search_filter: Optional[Dict]) -> List[dict]:
-        # Implement semantic search logic here
         return []
 
     def _vector_search(self, query: str, top_k: int, score_threshold: float, search_filter: Optional[Dict]) -> List[dict]:
-        # Implement vector search logic here
         return []
 
     def _combine_results(self, semantic_results: List[dict], vector_results: List[dict]) -> List[dict]:
-        # Combine and rank results from both searches
-        pass 
+        return []
