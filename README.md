@@ -151,11 +151,11 @@ The results are merged with Reciprocal Rank Fusion (RRF) for stronger retrieval 
 
 Minimal usage example:
 ```python
-from DesktopAssistant.storage.hybrid_searcher import BM25Search, ExactMatchSearch, RRF, HybridSearch
+from storage.hybrid_searcher import BM25Search, ExactMatchSearch, RRF, HybridSearch
 
 # Reuse existing instances if you have a running app
-from DesktopAssistant.storage.vector_storage import VectorStorage
-from DesktopAssistant.storage.embedding_manager import EmbeddingManager
+from storage.vector_storage import VectorStorage
+from storage.embedding_manager import EmbeddingManager
 
 vector_storage = VectorStorage(collection_name="documents")
 embedding_manager = EmbeddingManager("BAAI/bge-small-en-v1.5")
@@ -171,8 +171,11 @@ hybrid = HybridSearch(
 hybrid.build_keyword_index()
 results = hybrid.hybrid_search(query="chamber of secrets", top_k=5)
 ```
-
-To integrate into the API, you can instantiate `HybridSearch` alongside `QueryService`, build the keyword index on startup, and call `hybrid.hybrid_search` inside the search handler. Map the combined results back to your `SearchResult` model.
+### TODO:
+- Integrate Hybrid-Search + re-rannker into the API
+- Build the keyword index on startup
+- Call hybrid.hybrid_search inside search handler
+- Map the combines results to `SearchResult` model
 
 ## Ingestion Pipeline
 - Discovers files in a directory via `file_handler.py` (allowed: .pdf, .docx, .doc, .pptx, .ppt, .txt, .md, .rtf, .odt)
