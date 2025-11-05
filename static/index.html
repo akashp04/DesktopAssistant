@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desktop Assistant - Document Search</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #2c3e50; 
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .search-box { 
+            width: 100%; 
+            padding: 15px; 
+            font-size: 16px; 
+            margin: 20px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        .search-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .search-btn:hover { background: #2980b9; }
+        .search-btn:disabled { background: #bdc3c7; }
+        
+        .filter-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .results { 
+            margin-top: 30px; 
+        }
+        .result-item { 
+            border: 1px solid #e1e8ed; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .file-name { 
+            font-weight: bold; 
+            color: #2980b9;
+            font-size: 16px;
+        }
+        .score { 
+            background: #27ae60; 
+            color: white; 
+            padding: 4px 8px; 
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .result-content {
+            line-height: 1.6;
+            color: #2c3e50;
+        }
+        .result-meta {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .loading { 
+            text-align: center; 
+            color: #7f8c8d;
+            padding: 20px;
+        }
+        .error {
+            color: #e74c3c;
+            background: #fdf2f2;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .stats {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Desktop Assistant - Document Search</h1>
+        
+        <input type="text" class="search-box" placeholder="Search your documents..." id="searchBox" onkeypress="handleKeyPress(event)">
+        
+        <div class="search-controls">
+            <button class="search-btn" onclick="search()" id="searchBtn">🔍 Search</button>
+            <input type="number" class="filter-input" placeholder="Results (max 50)" id="topK" value="10" min="1" max="50">
+            <input type="text" class="filter-input" placeholder="File type (e.g., pdf, txt)" id="fileType">
+            <select id="searchType" class="filter-input">
+                <option value="semantic">Semantic</option>
+                <option value="hybrid" selected>Hybrid (Coming Soon)</option>
+            </select>
+        </div>
+        
+        <div id="stats" class="stats" style="display: none;"></div>
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        async function search() {
+            const query = document.getElementById('searchBox').value;
+            const topK = parseInt(document.getElementById('topK').value) || 10;
+            const fileType = document.getElementById('fileType').value;
+            const searchType = document.getElementById('searchType').value;
+            
+            if (!query.trim()) {
+                alert('Please enter a search query');
+                return;
+            }
+            
+            const searchBtn = document.getElementById('searchBtn');
+            const resultsDiv = document.getElementById('results');
+            const statsDiv = document.getElementById('stats');
+            
+            // Show loading state
+            searchBtn.disabled = true;
+            searchBtn.textContent = '🔄 Searching...';
+            resultsDiv.innerHTML = '<div class="loading">Searching your documents...</div>';
+            statsDiv.style.display = 'none';
+            
+            try {
+                const requestBody = {
+                    query: query,
+                    top_k: topK,
+                    score_threshold: 0.0
+                };
+                
+                if (fileType) {
+                    requestBody.file_type = fileType;
+                }
+                
+                const endpoint = searchType === 'hybrid' ? '/search/hybrid' : '/search/';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Search failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Show stats
+                statsDiv.innerHTML = `
+                    📊 Found ${data.total_results} results in ${data.processing_time_ms}ms
+                    ${data.search_breakdown ? `| Semantic: ${data.search_breakdown.semantic_matches || 0}, Keyword: ${data.search_breakdown.keyword_matches || 0}, Exact: ${data.search_breakdown.exact_matches || 0}` : ''}
+                `;
+                statsDiv.style.display = 'block';
+                
+                // Display results
+                if (data.results && data.results.length > 0) {
+                    resultsDiv.innerHTML = data.results.map((result, index) => `
+                        <div class="result-item">
+                            <div class="result-header">
+                                <div class="file-name">${result.file_name}</div>
+                                <div class="score">${result.score ? result.score.toFixed(3) : (result.final_score ? result.final_score.toFixed(3) : 'N/A')}</div>
+                            </div>
+                            <div class="result-content">${highlightQuery(result.chunk_text || result.content, query)}</div>
+                            <div class="result-meta">
+                                📄 ${result.file_type} | 📍 Chunk ${result.chunk_index}
+                                ${result.semantic_score ? ` | 🧠 Semantic: ${result.semantic_score.toFixed(3)}` : ''}
+                                ${result.keyword_score ? ` | 🔤 Keyword: ${result.keyword_score.toFixed(3)}` : ''}
+                                ${result.exact_match_score ? ` | 🎯 Exact: ${result.exact_match_score.toFixed(3)}` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsDiv.innerHTML = '<div class="loading">No results found. Try different keywords or check your document collection.</div>';
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                statsDiv.style.display = 'none';
+            } finally {
+                // Reset button
+                searchBtn.disabled = false;
+                searchBtn.textContent = '🔍 Search';
+            }
+        }
+        
+        function highlightQuery(text, query) {
+            if (!query) return text;
+            const words = query.split(' ').filter(word => word.length > 2);
+            let highlighted = text;
+            
+            words.forEach(word => {
+                const regex = new RegExp(`(${word})`, 'gi');
+                highlighted = highlighted.replace(regex, '<mark>$1</mark>');
+            });
+            
+            return highlighted;
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                search();
+            }
+        }
+        
+        // Auto-focus search box
+        document.getElementById('searchBox').focus();
+    </script>
+</body>
+</html>

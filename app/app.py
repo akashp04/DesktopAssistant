@@ -204,6 +204,7 @@ query_service = QueryService(
     qdrant_host="localhost",
     qdrant_port=6333,
     collection_name="documents",
+    qdrant_path='./qdrant_storage'
 )
 
 @app.get("/", tags=["Health"])

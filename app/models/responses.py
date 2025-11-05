@@ -1,6 +1,6 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from pydantic import BaseModel
-from DesktopAssistant.app.models.entities import SearchResult
+from app.models.entities import SearchResult
 
 class QueryResponse(BaseModel):
     query: str
@@ -29,3 +29,32 @@ class DeleteCollectionResponse(BaseModel):
     collection_name: str
     deleted: bool
     status: str
+
+class HybridSearchResult(BaseModel):
+    chunk_id: str
+    content: str
+    file_name: str
+    file_path: str
+    file_type: str
+    chunk_index: int
+    semantic_score: float
+    keyword_score: float
+    exact_match_score: float
+    final_score: float
+    metadata: Dict[str, Any] = {}
+
+class HybridSearchResponse(BaseModel):
+    query: str
+    search_type: str
+    results: List[HybridSearchResult]
+    total_results: int
+    processing_time_ms: float
+    search_breakdown: Dict[str, int] = {}
+
+class HealthResponse(BaseModel):
+    status: str
+    qdrant_connected: bool
+    collection_exists: bool
+    collection_name: str
+    embedding_model: str
+    uptime_seconds: Optional[float] = None

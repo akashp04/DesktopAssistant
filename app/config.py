@@ -13,14 +13,14 @@ class Settings(BaseSettings):
 
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
-    qdrant_path: Optional[str] = None
+    qdrant_path: Optional[str] = "./qdrant_storage"  # Changed to use path mode
     collection_name: str = "documents"
 
-    embedding_model_name: str = "BAAI/bge-small-en-v1.5"
+    embedding_model: str = "BAAI/bge-small-en-v1.5"  # Fixed field name
     vector_size: int = 384
 
-    chunk_size: int = 400
-    chunk_overlap: int = 100
+    default_chunk_size: int = 400  # Fixed field name
+    default_overlap: int = 100     # Fixed field name
     max_workers: int = 3
 
     top_k: int = 5

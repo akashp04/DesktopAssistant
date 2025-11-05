@@ -4,7 +4,7 @@ from sentence_transformers import SentenceTransformer
 import threading
 from threading import Lock
 
-from DesktopAssistant.storage.document_chunker import DocumentChunk
+from storage.document_chunker import DocumentChunk
 
 class EmbeddingManager:
     def __init__(self, embedding_model: str = "BAAI/bge-small-en-v1.5"):

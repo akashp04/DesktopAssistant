@@ -195,4 +195,3 @@ python /DesktopAssistant/storage/pipeline.py \
 ## Desktop App Bundling
 When all the functionalites are completed, I'll ship it as a Desktop App 
 - Full desktop UI (webview): use Tauri or Electron.
-```

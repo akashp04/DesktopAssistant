@@ -5,7 +5,7 @@ from dataclasses import asdict
 import uuid
 import os 
 
-from DesktopAssistant.storage.document_chunker import DocumentChunk
+from storage.document_chunker import DocumentChunk
 
 class VectorStorage:
     def __init__(self, 
@@ -101,7 +101,7 @@ class VectorStorage:
     def search_query(self, collection_name: str, query_embedding: List[float], top_k: int, score_threshold: float, search_filter: Optional[Filter]) -> List[dict]:
         try:
             search_results = self.client.search(
-                collection_name=self.collection_name,
+                collection_name=collection_name,
                 query_vector=query_embedding,
                 limit=top_k,
                 score_threshold=score_threshold if score_threshold > 0 else None,
@@ -124,13 +124,13 @@ class VectorStorage:
             print(f"Error deleting collection: {e}")
             raise e
 
-    def get_collection_info(self):
+    def get_collection_info(self, collection_name: str = "documents"):
         try:
-            if not self.client.collection_exists(self.collection_name):
+            if not self.client.collection_exists(collection_name):
                 return {"exists": False, "message": f"Collection {self.collection_name} does not exist"}
-            collection_info = self.client.get_collection(collection_name=self.collection_name)
+            collection_info = self.client.get_collection(collection_name=collection_name)
             return {"exists": True, 
-                    "name":self.collection_name,
+                    "name":collection_name,
                     "points_count": collection_info.points_count,
                     "vectors_count": collection_info.vectors_count,
                     "vector_size": collection_info.config.params.vectors.size,

@@ -1,13 +1,15 @@
-from DesktopAssistant.storage.embedding_manager import EmbeddingManager
-from DesktopAssistant.storage.vector_storage import VectorStorage
-from DesktopAssistant.storage.pipeline import Pipeline
-from DesktopAssistant.app.models.requests import QueryRequest, IngestRequest
-from DesktopAssistant.app.models.responses import QueryResponse, IngestResponse
-from DesktopAssistant.app.models.entities import SearchResult
-
 import time
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
+
+from app.config import settings
+from app.models.requests import QueryRequest, IngestRequest
+from app.models.responses import QueryResponse, IngestResponse, SearchResult
+from app.core.exceptions import ServiceError, ValidationError
+from storage.embedding_manager import EmbeddingManager
+from storage.vector_storage import VectorStorage
+from storage.pipeline import Pipeline
+
 import logging
 from fastapi import HTTPException
 from qdrant_client.models import Filter, FieldCondition, MatchValue
@@ -16,21 +18,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class QueryService:
-    def __init__(self, 
-                 qdrant_host: str = "localhost",
-                 qdrant_port: int = 6333,
-                 qdrant_path: str = None,
-                 collection_name: str = "documents",
-                 embedding_model_name: str = "BAAI/bge-small-en-v1.5"):
-        
-        self.embedding_manager = EmbeddingManager(embedding_model = embedding_model_name)
+    def __init__(self):
+        self.embedding_manager = EmbeddingManager(embedding_model=settings.embedding_model)
         self.vector_storage = VectorStorage(
-            host=qdrant_host,
-            port=qdrant_port,
-            path=qdrant_path,
-            collection_name=collection_name
+            host=settings.qdrant_host,
+            port=settings.qdrant_port,
+            path=settings.qdrant_path,
+            collection_name=settings.collection_name,
+            vector_size=settings.vector_size
         )
-        logger.info ("Query Service initialized.")
+        logger.info("Query Service initialized.")
     
     def search(self, request: QueryRequest) -> QueryResponse:
         start = time.monotonic()
@@ -41,10 +38,10 @@ class QueryService:
             search_filter = self._build_filter(request.file_type, request.file_name)
             search_results = self.vector_storage.search_query(
                 collection_name = self.vector_storage.collection_name,
-                query_vector = query_embedding,
-                limit = request.top_k,
+                query_embedding = query_embedding,
+                top_k = request.top_k,
                 score_threshold = request.score_threshold,
-                query_filter = search_filter
+                search_filter = search_filter
             )
             results = []
             for result in search_results:
@@ -135,3 +132,42 @@ class QueryService:
         except Exception as e:
             logger.error(f"Error during ingestion: {e}")
             raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+    
+    def get_collection_info(self, collection_name: str = 'documents'):
+        try:
+            info = self.vector_storage.get_collection_info()
+            return info
+        except Exception as e:
+            logger.error(f"Error during getting Collection Info: {e}")
+            raise HTTPException(status_code=500, detail=f"Retrieving Collection Info Failed: {str(e)}")
+
+    def clear_collection(self) -> bool:
+        try:
+            info = self.vector_storage.get_collection_info()
+            if not info.get("exists", False):
+                return False
+            
+            points_count = info.get("points_count", 0)
+            if points_count == 0:
+                return False 
+            
+            self.vector_storage.delete_collection()
+            self.vector_storage._initialize_collection()
+            
+            logger.info(f"Cleared collection: {self.vector_storage.collection_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error clearing collection: {e}")
+            raise HTTPException(status_code=500, detail=f"Clearing collection failed: {str(e)}")
+
+    def delete_collection(self) -> bool:
+        try:
+            deleted = self.vector_storage.delete_collection()
+            if deleted:
+                logger.info(f"Deleted collection: {self.vector_storage.collection_name}")
+            return deleted
+        except Exception as e:
+            logger.error(f"Error deleting collection: {e}")
+            raise HTTPException(status_code=500, detail=f"Deleting collection failed: {str(e)}")
+    

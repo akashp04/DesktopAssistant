@@ -3,9 +3,9 @@ from collections import defaultdict, Counter
 import math
 import re
 
-from DesktopAssistant.storage.embedding_manager import EmbeddingManager
-from DesktopAssistant.storage.vector_storage import VectorStorage
-from DesktopAssistant.app.models.entities import SearchResult
+from embedding_manager import EmbeddingManager
+from vector_storage import VectorStorage
+from app.models.entities import SearchResult
 class BM25Search:
     def __init__(self, k: float = 1.2, b: float = 0.75):
         self.k = k
