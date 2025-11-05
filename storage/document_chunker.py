@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from tiktoken import get_encoding, Encoding
 
-from file_handler import FileHandler
+from DesktopAssistant.storage.file_handler import FileHandler
 
 
 @dataclass   

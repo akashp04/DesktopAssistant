@@ -1,7 +1,7 @@
-from embedding_manager import EmbeddingManager
+from DesktopAssistant.storage.embedding_manager import EmbeddingManager
 from vector_storage import VectorStorage
-from document_chunker import DocumentChunker
-from file_handler import FileHandler
+from DesktopAssistant.storage.document_chunker import DocumentChunker
+from DesktopAssistant.storage.file_handler import FileHandler
 
 from pathlib import Path
 from typing import List, Union

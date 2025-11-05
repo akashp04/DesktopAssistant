@@ -5,7 +5,7 @@ from dataclasses import asdict
 import uuid
 import os 
 
-from document_chunker import DocumentChunk
+from DesktopAssistant.storage.document_chunker import DocumentChunk
 
 class VectorStorage:
     def __init__(self, 
@@ -104,7 +104,7 @@ class VectorStorage:
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 limit=top_k,
-                score_threshold=score_threshold,
+                score_threshold=score_threshold if score_threshold > 0 else None,
                 query_filter=search_filter
             )
             return search_results
