@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic>=2,<3
+pydantic-settings>=2,<3
+qdrant-client>=1.9,<2
+sentence-transformers>=3,<4
+numpy>=1.24,<3
+tiktoken>=0.7,<1
+unstructured
+pypdf
+python-docx
+python-pptx
+
