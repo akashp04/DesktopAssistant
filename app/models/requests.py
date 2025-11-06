@@ -10,11 +10,10 @@ class QueryRequest(BaseModel):
 
 class HybridSearchRequest(BaseModel):
     query: str = Field(..., description="The search query", min_length=1)
-    top_k: int = Field(10, description="Number of results to return", ge=1, le=100)
+    top_k: int = Field(5, description="Number of results to return", ge=1, le=100)
     semantic_weight: float = Field(1.0, description="Weight for semantic search", ge=0.0, le=10.0)
     keyword_weight: float = Field(1.0, description="Weight for keyword search", ge=0.0, le=10.0)
     exact_weight: float = Field(2.0, description="Weight for exact matches", ge=0.0, le=10.0)
-    search_type: str = Field("hybrid", description="Search type: 'semantic', 'keyword', 'exact', or 'hybrid'")
     file_type: Optional[Union[str, List[str]]] = Field(None, description="Filter by file type")
     file_name: Optional[Union[str, List[str]]] = Field(None, description="Filter by file name")
 

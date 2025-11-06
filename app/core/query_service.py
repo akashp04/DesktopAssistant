@@ -4,11 +4,13 @@ from typing import List, Optional, Union, Dict, Any
 
 from app.config import settings
 from app.models.requests import QueryRequest, IngestRequest
-from app.models.responses import QueryResponse, IngestResponse, SearchResult
+from app.models.responses import QueryResponse, IngestResponse, HybridSearchResponse
+from app.models.entities import SearchResult
 from app.core.exceptions import ServiceError, ValidationError
 from storage.embedding_manager import EmbeddingManager
 from storage.vector_storage import VectorStorage
 from storage.pipeline import Pipeline
+from storage.hybrid_searcher import HybridSearch, BM25Search, ExactMatchSearch, RRF
 
 import logging
 from fastapi import HTTPException
@@ -28,6 +30,18 @@ class QueryService:
             vector_size=settings.vector_size
         )
         logger.info("Query Service initialized.")
+
+        self.bm25_search = BM25Search()
+        self.exact_match_search = ExactMatchSearch()
+        self.rrf_ranker = RRF()
+        
+        self.hybrid_searcher = HybridSearch(
+            vector_storage=self.vector_storage,
+            embedding_manager=self.embedding_manager,
+            bm25=self.bm25_search,
+            exact_matcher=self.exact_match_search,
+            rrf_ranker=self.rrf_ranker
+        )
     
     def search(self, request: QueryRequest) -> QueryResponse:
         start = time.monotonic()
@@ -54,6 +68,8 @@ class QueryService:
                     chunk_index = result.payload.get("chunk_index", 0),
                     total_chunks = result.payload.get("total_chunks", 0),
                     score=result.score,
+                    semantic_score=result.score,
+                    final_score=result.score,
                     metadata=result.payload.get("metadata", {})
                 )
                 results.append(search_result)
@@ -70,6 +86,56 @@ class QueryService:
             logger.error(f"Error during search: {e}")
             raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
     
+    def hybrid_search(self, request: QueryRequest) -> QueryResponse:
+        start = time.monotonic()
+        try:
+            if not self.hybrid_searcher.corpus_built:
+                self.hybrid_searcher.build_keyword_index()
+            
+            search_filter = self._build_filter(request.file_type, request.file_name)
+            results = self.hybrid_searcher.hybrid_search(
+                query = request.query,
+                top_k = request.top_k,
+                semantic_weight = request.semantic_weight,
+                keyword_weight = request.keyword_weight,
+                exact_weight = request.exact_weight,
+                search_filter = search_filter
+            )
+            end = time.monotonic()
+            processing_time_ms = (end - start) * 1000
+
+            search_breakdown = {
+                'semantic_matches': len([r for r in results if r.semantic_score > 0]),
+                'keyword_matches': len([r for r in results if r.keyword_score > 0]),
+                'exact_matches': len([r for r in results if r.exact_match_score > 0])
+            }
+
+            return HybridSearchResponse(
+                query=request.query,
+                results=results,
+                total_results=len(results),
+                processing_time_ms=round(processing_time_ms, 2),
+                search_breakdown=search_breakdown
+            )
+        except Exception as e:
+            raise ServiceError(f"Hybrid search failed: {str(e)}")
+    
+    def rebuild_keyword_index(self) -> Dict[str, Any]:
+        try:
+            start = time.monotonic()
+            self.hybrid_searcher.build_keyword_index(force_rebuild=True)
+            end = time.monotonic()
+            
+            return {
+                "message": "Keyword index rebuilt successfully",
+                "documents_indexed": len(self.hybrid_searcher.document_corpus),
+                "rebuild_time_ms": round((end - start) * 1000, 2),
+                "status": "success"
+            }
+        except Exception as e:
+            raise ServiceError(f"Failed to rebuild keyword index: {str(e)}")
+    
+
     def _build_filter(self, file_types: Optional[Union[str, List[str]]] = None, file_names: Optional[Union[str, List[str]]] = None) -> Optional[Filter]:
         conditions = []
         if file_types:

@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
 class SearchResult(BaseModel):
@@ -9,5 +9,13 @@ class SearchResult(BaseModel):
     chunk_text: str
     chunk_index: int
     total_chunks: int
-    score: float
-    metadata: Dict[str, Any]
+    score: float = 0.0
+    
+    semantic_score: float = 0.0
+    keyword_score: float = 0.0
+    exact_match_score: float = 0.0
+    final_score: float = 0.0 
+    metadata: Dict[str, Any] = {}
+
+    class Config:
+        from_attributes = True

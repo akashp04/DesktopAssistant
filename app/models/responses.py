@@ -45,8 +45,7 @@ class HybridSearchResult(BaseModel):
 
 class HybridSearchResponse(BaseModel):
     query: str
-    search_type: str
-    results: List[HybridSearchResult]
+    results: List[SearchResult]
     total_results: int
     processing_time_ms: float
     search_breakdown: Dict[str, int] = {}

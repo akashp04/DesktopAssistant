@@ -6,245 +6,255 @@
     <title>Desktop Assistant - Document Search</title>
     <style>
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f5f5f5; 
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 { 
-            color: #2c3e50; 
-            text-align: center;
-            margin-bottom: 30px;
-        }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .search-section { margin-bottom: 30px; }
         .search-box { 
             width: 100%; 
             padding: 15px; 
             font-size: 16px; 
-            margin: 20px 0;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            margin: 10px 0; 
             box-sizing: border-box;
         }
-        .search-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+        .search-controls { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; align-items: center; }
+        .search-button { 
+            padding: 15px 30px; 
+            font-size: 16px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: background 0.3s;
         }
-        .search-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .search-btn:hover { background: #2980b9; }
-        .search-btn:disabled { background: #bdc3c7; }
-        
-        .filter-input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .results { 
-            margin-top: 30px; 
-        }
+        .search-button:hover { background: #0056b3; }
+        .search-button:disabled { background: #ccc; cursor: not-allowed; }
+        .search-type { display: flex; gap: 15px; align-items: center; }
+        .search-type label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .results { margin-top: 30px; }
         .result-item { 
-            border: 1px solid #e1e8ed; 
+            border: 1px solid #e0e0e0; 
             padding: 20px; 
             margin: 15px 0; 
-            border-radius: 8px;
-            background: #fafafa;
+            border-radius: 8px; 
+            background: #fafafa; 
+            transition: box-shadow 0.3s;
         }
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
+        .result-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .result-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+            gap: 20px; /* Add space between file name and scores */
         }
         .file-name { 
             font-weight: bold; 
-            color: #2980b9;
-            font-size: 16px;
+            color: #1565C0; 
+            font-size: 18px; 
+            flex: 1; /* Allow filename to take available space */
         }
-        .score { 
-            background: #27ae60; 
+        .scores { 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap; 
+            flex-shrink: 0; /* Prevent scores from shrinking */
+        }
+        .score-badge { 
             color: white; 
-            padding: 4px 8px; 
-            border-radius: 12px;
+            padding: 6px 12px; 
+            border-radius: 20px; 
+            font-size: 11px;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+        .semantic-score { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
+        .keyword-score { 
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+        }
+        .exact-score { 
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
+        }
+        .final-score { 
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); 
+            font-weight: bold; 
             font-size: 12px;
+            padding: 7px 14px;
         }
-        .result-content {
-            line-height: 1.6;
-            color: #2c3e50;
-        }
-        .result-meta {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #7f8c8d;
-        }
-        .loading { 
-            text-align: center; 
-            color: #7f8c8d;
-            padding: 20px;
-        }
-        .error {
-            color: #e74c3c;
-            background: #fdf2f2;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 10px 0;
-        }
-        .stats {
-            background: #ecf0f1;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #2c3e50;
-        }
+        .result-content { margin-top: 15px; line-height: 1.6; color: #555; }
+        .loading { text-align: center; color: #666; margin: 20px 0; }
+        .error { background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .info { background: #e3f2fd; color: #1565c0; padding: 15px; border-radius: 8px; margin: 15px 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 Desktop Assistant - Document Search</h1>
+        <h1>🔍 Desktop Assistant - Document Search</h1>
         
-        <input type="text" class="search-box" placeholder="Search your documents..." id="searchBox" onkeypress="handleKeyPress(event)">
-        
-        <div class="search-controls">
-            <button class="search-btn" onclick="search()" id="searchBtn">🔍 Search</button>
-            <input type="number" class="filter-input" placeholder="Results (max 50)" id="topK" value="10" min="1" max="50">
-            <input type="text" class="filter-input" placeholder="File type (e.g., pdf, txt)" id="fileType">
-            <select id="searchType" class="filter-input">
-                <option value="semantic">Semantic</option>
-                <option value="hybrid" selected>Hybrid (Coming Soon)</option>
-            </select>
+        <div class="search-section">
+            <input type="text" class="search-box" placeholder="Search your documents..." id="searchBox" 
+                   onkeypress="if(event.key==='Enter') search()">
+            
+            <div class="search-controls">
+                <button onclick="search()" class="search-button" id="searchBtn">🔍 Search</button>
+                
+                <div class="search-type">
+                    <label><input type="radio" name="searchType" value="semantic" checked> Semantic</label>
+                    <label><input type="radio" name="searchType" value="hybrid"> Hybrid</label>
+                </div>
+                
+                <input type="number" id="topK" placeholder="Results" value="5" min="1" max="20" 
+                       style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
         </div>
-        
-        <div id="stats" class="stats" style="display: none;"></div>
+
+        <div id="status" class="info" style="display: none;"></div>
         <div id="results" class="results"></div>
     </div>
 
     <script>
         async function search() {
-            const query = document.getElementById('searchBox').value;
-            const topK = parseInt(document.getElementById('topK').value) || 10;
-            const fileType = document.getElementById('fileType').value;
-            const searchType = document.getElementById('searchType').value;
-            
-            if (!query.trim()) {
-                alert('Please enter a search query');
+            const query = document.getElementById('searchBox').value.trim();
+            if (!query) {
+                showError('Please enter a search query');
                 return;
             }
-            
+
             const searchBtn = document.getElementById('searchBtn');
             const resultsDiv = document.getElementById('results');
-            const statsDiv = document.getElementById('stats');
+            const statusDiv = document.getElementById('status');
             
             // Show loading state
             searchBtn.disabled = true;
             searchBtn.textContent = '🔄 Searching...';
-            resultsDiv.innerHTML = '<div class="loading">Searching your documents...</div>';
-            statsDiv.style.display = 'none';
-            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'info';
+            statusDiv.textContent = 'Searching documents...';
+            resultsDiv.innerHTML = '';
+
             try {
-                const requestBody = {
-                    query: query,
-                    top_k: topK,
-                    score_threshold: 0.0
-                };
+                const searchType = document.querySelector('input[name="searchType"]:checked').value;
+                const topK = parseInt(document.getElementById('topK').value) || 5;
                 
-                if (fileType) {
-                    requestBody.file_type = fileType;
+                let endpoint, payload;
+                
+                if (searchType === 'hybrid') {
+                    endpoint = '/search/hybrid';
+                    payload = {
+                        query: query,
+                        top_k: topK,
+                        semantic_weight: 1.0,
+                        keyword_weight: 1.0,
+                        exact_weight: 2.0
+                    };
+                } else {
+                    endpoint = '/search/';
+                    payload = {
+                        query: query,
+                        top_k: topK,
+                        score_threshold: 0.0
+                    };
                 }
-                
-                const endpoint = searchType === 'hybrid' ? '/search/hybrid' : '/search/';
+
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestBody)
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`Search failed: ${response.status}`);
-                }
-                
+
                 const data = await response.json();
                 
-                // Show stats
-                statsDiv.innerHTML = `
-                    📊 Found ${data.total_results} results in ${data.processing_time_ms}ms
-                    ${data.search_breakdown ? `| Semantic: ${data.search_breakdown.semantic_matches || 0}, Keyword: ${data.search_breakdown.keyword_matches || 0}, Exact: ${data.search_breakdown.exact_matches || 0}` : ''}
-                `;
-                statsDiv.style.display = 'block';
-                
-                // Display results
-                if (data.results && data.results.length > 0) {
-                    resultsDiv.innerHTML = data.results.map((result, index) => `
-                        <div class="result-item">
-                            <div class="result-header">
-                                <div class="file-name">${result.file_name}</div>
-                                <div class="score">${result.score ? result.score.toFixed(3) : (result.final_score ? result.final_score.toFixed(3) : 'N/A')}</div>
-                            </div>
-                            <div class="result-content">${highlightQuery(result.chunk_text || result.content, query)}</div>
-                            <div class="result-meta">
-                                📄 ${result.file_type} | 📍 Chunk ${result.chunk_index}
-                                ${result.semantic_score ? ` | 🧠 Semantic: ${result.semantic_score.toFixed(3)}` : ''}
-                                ${result.keyword_score ? ` | 🔤 Keyword: ${result.keyword_score.toFixed(3)}` : ''}
-                                ${result.exact_match_score ? ` | 🎯 Exact: ${result.exact_match_score.toFixed(3)}` : ''}
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    resultsDiv.innerHTML = '<div class="loading">No results found. Try different keywords or check your document collection.</div>';
+                if (!response.ok) {
+                    throw new Error(data.detail || `HTTP ${response.status}`);
                 }
                 
+                displayResults(data, searchType);
+                
             } catch (error) {
-                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
-                statsDiv.style.display = 'none';
+                showError(`Search failed: ${error.message}`);
+                console.error('Search error:', error);
             } finally {
-                // Reset button
                 searchBtn.disabled = false;
                 searchBtn.textContent = '🔍 Search';
+                statusDiv.style.display = 'none';
             }
         }
-        
-        function highlightQuery(text, query) {
-            if (!query) return text;
-            const words = query.split(' ').filter(word => word.length > 2);
-            let highlighted = text;
+
+        function displayResults(data, searchType) {
+            const resultsDiv = document.getElementById('results');
             
-            words.forEach(word => {
-                const regex = new RegExp(`(${word})`, 'gi');
-                highlighted = highlighted.replace(regex, '<mark>$1</mark>');
-            });
-            
-            return highlighted;
-        }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                search();
+            if (!data.results || data.results.length === 0) {
+                resultsDiv.innerHTML = '<div class="info">No results found. Try different keywords.</div>';
+                return;
             }
+
+            let html = `<div class="info">
+                Found ${data.total_results} results in ${data.processing_time_ms}ms`;
+            
+            if (searchType === 'hybrid' && data.search_breakdown) {
+                html += ` (Semantic: ${data.search_breakdown.semantic_matches}, 
+                         Keyword: ${data.search_breakdown.keyword_matches}, 
+                         Exact: ${data.search_breakdown.exact_matches})`;
+            }
+            html += '</div>';
+
+            html += data.results.map(result => `
+                <div class="result-item">
+                    <div class="result-header">
+                        <div class="file-name">${escapeHtml(result.file_name)}</div>
+                        <div class="scores">
+                            ${searchType === 'hybrid' ? `
+                                <span class="score-badge semantic-score">S: ${result.semantic_score.toFixed(3)}</span>
+                                <span class="score-badge keyword-score">K: ${result.keyword_score.toFixed(3)}</span>
+                                <span class="score-badge exact-score">E: ${result.exact_match_score.toFixed(3)}</span>
+                                <span class="score-badge final-score">Final: ${result.final_score.toFixed(3)}</span>
+                            ` : `
+                                <span class="score-badge final-score">Score: ${result.score.toFixed(3)}</span>
+                            `}
+                        </div>
+                    </div>
+                    <div style="color: #666; font-size: 14px; margin: 5px 0;">
+                        ${escapeHtml(result.file_path)} (Chunk ${result.chunk_index}/${result.total_chunks})
+                    </div>
+                    <div class="result-content">${escapeHtml(result.chunk_text)}</div>
+                </div>
+            `).join('');
+
+            resultsDiv.innerHTML = html;
         }
-        
-        // Auto-focus search box
-        document.getElementById('searchBox').focus();
+
+        function showError(message) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<div class="error">❌ ${escapeHtml(message)}</div>`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Test connection on page load
+        window.onload = async function() {
+            try {
+                const response = await fetch('/api');
+                const data = await response.json();
+                console.log('✅ Connected to:', data.message);
+            } catch (error) {
+                showError('Failed to connect to API. Make sure the server is running.');
+                console.error('Connection error:', error);
+            }
+        };
     </script>
 </body>
 </html>

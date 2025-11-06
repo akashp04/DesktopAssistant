@@ -3,7 +3,7 @@ Search endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_query_service
-from app.models.requests import QueryRequest
+from app.models.requests import QueryRequest, HybridSearchRequest
 from app.models.responses import QueryResponse
 from app.core.query_service import QueryService
 from app.core.exceptions import ServiceError, ValidationError
@@ -37,5 +37,24 @@ async def semantic_search(
         return await query_service.search(request)
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except ServiceError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/hybrid", response_model=QueryResponse)
+def hybrid_search(
+    request: HybridSearchRequest,
+    query_service: QueryService = Depends(get_query_service)
+):
+    try:
+        return query_service.hybrid_search(request)
+    except ValidationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ServiceError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/rebuild-index")
+def rebuild_keyword_index(query_service: QueryService = Depends(get_query_service)):
+    try:
+        return query_service.rebuild_keyword_index()
     except ServiceError as e:
         raise HTTPException(status_code=500, detail=str(e))

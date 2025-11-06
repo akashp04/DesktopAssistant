@@ -9,7 +9,6 @@ from app.config import settings
 from app.api import health, search, ingest, collections
 
 def create_app() -> FastAPI:
-    """Create FastAPI application"""
     app = FastAPI(
         title=settings.app_name,
         description=settings.app_description,
@@ -33,20 +32,18 @@ def create_app() -> FastAPI:
     app.include_router(ingest.router)
     app.include_router(collections.router)
     
+    @app.get("/")
+    async def root():
+        return FileResponse('static/index.html')
+
+    @app.get("/api")
+    async def api_info():
+        return {
+            "message": f"{settings.app_name} is running",
+            "status": "healthy",
+            "version": settings.app_version,
+            "docs_url": "/docs",
+            "web_interface": "/"
+        }
+    
     return app
-
-app = create_app()
-
-@app.get("/")
-async def root():
-    return FileResponse('static/index.html')
-
-@app.get("/api")
-async def api_info():
-    return {
-        "message": f"{settings.app_name} is running",
-        "status": "healthy",
-        "version": settings.app_version,
-        "docs_url": "/docs",
-        "web_interface": "/"
-    }

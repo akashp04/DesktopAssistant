@@ -3,12 +3,13 @@ from collections import defaultdict, Counter
 import math
 import re
 
-from embedding_manager import EmbeddingManager
-from vector_storage import VectorStorage
+from .embedding_manager import EmbeddingManager
+from .vector_storage import VectorStorage
 from app.models.entities import SearchResult
+
 class BM25Search:
-    def __init__(self, k: float = 1.2, b: float = 0.75):
-        self.k = k
+    def __init__(self, k1: float = 1.2, b: float = 0.75):
+        self.k1 = k1
         self.b = b
         self.documents = []
         self.doc_freqs = []
@@ -190,7 +191,7 @@ class HybridSearch:
                       search_filter: Optional[Dict] = None): 
         
         semantic_results = self._semantic_search(query, top_k * 3, search_filter)
-        keyword_results = self._vector_search(query, top_k * 3)
+        keyword_results = self._keyword_search(query, top_k * 3)
         exact_results = self._exact_match_search(query, top_k * 2)
 
         weights = {
@@ -207,7 +208,7 @@ class HybridSearch:
         final_results = self._build_final_results(combined_results[:top_k], semantic_results, keyword_results, exact_results)
         return final_results
 
-    def _semantic_search(self, query: str, top_k: int, search_filter: Optional[Dict]) -> List[dict]:
+    def _semantic_search(self, query: str, top_k: int, search_filter: Optional[Dict]) -> List[Tuple[str, float]]:
         try:
             query_embedding = self.embedding_manager.generate_query_embedding([query])
 
@@ -215,7 +216,8 @@ class HybridSearch:
                 collection_name=self.vector_storage.collection_name,
                 query_embedding=query_embedding,
                 top_k=top_k,
-                query_filter=search_filter
+                score_threshold=0.0,
+                search_filter=search_filter
             )
             
             return [(result.payload.get('original_chunk_id', str(result.id)), result.score) 
@@ -225,7 +227,7 @@ class HybridSearch:
             print(f"Semantic search error: {e}")
             return []
 
-    def _keyword_search(self, query: str, top_k: int) -> List[dict]:
+    def _keyword_search(self, query: str, top_k: int) -> List[Tuple[str, float]]:
         try:
             scores = self.bm25.score_query(query)
         
@@ -244,7 +246,7 @@ class HybridSearch:
             print(f"Keyword search error: {e}")
             return []
 
-    def _exact_match_search(self, query: str, top_k: int) -> List[dict]:
+    def _exact_match_search(self, query: str, top_k: int) -> List[Tuple[str, float]]:
         try:
             scores = self.exact_matcher.score_exact_matches(query, self.document_corpus)
             
@@ -267,7 +269,7 @@ class HybridSearch:
                              combined_results: List[Tuple[str, float]],
                            semantic_results: List[Tuple[str, float]],
                            keyword_results: List[Tuple[str, float]], 
-                           exact_results: List[Tuple[str, float]]) -> List[dict]:
+                           exact_results: List[Tuple[str, float]]) -> List[SearchResult]:
         semantic_scores = dict(semantic_results)
         keyword_scores = dict(keyword_results)
         exact_scores = dict(exact_results)
@@ -286,11 +288,12 @@ class HybridSearch:
                 
                 result = SearchResult(
                     chunk_id=chunk_id,
-                    content=payload.get('chunk_text', ''),
+                    chunk_text=payload.get('chunk_text', ''),
                     file_name=payload.get('file_name', ''),
                     file_path=payload.get('file_path', ''),
                     file_type=payload.get('file_type', ''),
                     chunk_index=payload.get('chunk_index', 0),
+                    total_chunks=payload.get('total_chunks', 0),
                     semantic_score=semantic_scores.get(chunk_id, 0.0),
                     keyword_score=keyword_scores.get(chunk_id, 0.0),
                     exact_match_score=exact_scores.get(chunk_id, 0.0),
