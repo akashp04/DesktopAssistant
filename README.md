@@ -50,7 +50,7 @@ Example installation:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install fastapi uvicorn pydantic pydantic-settings qdrant-client sentence-transformers numpy tiktoken unstructured
+pip install -r requirements.txt
 ```
 
 ## Configuration
