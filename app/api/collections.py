@@ -22,6 +22,20 @@ async def get_collection_info(query_service: QueryService = Depends(get_query_se
     except ServiceError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.post("/{collection_name}", status_code=201)
+def create_collection(collection_name: str = "documents",query_service: QueryService = Depends(get_query_service)):
+    try:
+        result = query_service.create_collection(collection_name)
+        
+        return CreateCollectionResponse(
+            message=f"Collection '{collection_name}' created successfully." if result else f"Collection '{collection_name}' already exists.",
+            collection_name=collection_name,
+            created=result,
+            status="success"
+        )
+    except ServiceError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{collection_name}/info", tags=["Admin"])
 async def get_collection_details(
     collection_name: str,

@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"  # Fixed field name
     vector_size: int = 384
 
-    default_chunk_size: int = 400  # Fixed field name
+    default_chunk_size: int = 450  # Fixed field name
     default_overlap: int = 100     # Fixed field name
     max_workers: int = 3
 

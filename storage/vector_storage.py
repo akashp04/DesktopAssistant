@@ -1,5 +1,5 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import VectorParams, Distance, PointStruct, Filter
+from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
 from typing import List, Optional
 from dataclasses import asdict
 import uuid
@@ -86,11 +86,11 @@ class VectorStorage:
         try:
             result = self.client.scroll(
                 collection_name=self.collection_name,
-                scroll_filter={
-                    "must": [
-                        {"key": "file_hash", "match": {"value": file_hash}}
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(key="file_hash", match=MatchValue(value=file_hash))
                     ]
-                },
+                ),
                 limit=1
             )
             return len(result[0]) > 0
@@ -111,7 +111,26 @@ class VectorStorage:
         except Exception as e:
             print(f"Error during search query: {e}")
             raise e
+    
+    def create_collection(self, collection_name: str = "documents") -> bool:
+        try:
+            if self.client.collection_exists(collection_name):
+                raise Exception(f"Collection {collection_name} already exists.")
+            self.client.create_collection(
+                collection_name = collection_name,
+                vectors_config = VectorParams(size=self.vector_size, distance=Distance.COSINE)
+            )
 
+            return {
+                "collection_name": collection_name,
+                "vector_size": self.vector_size,
+                "distance_metric": "COSINE",
+                "status": "created"
+            }
+        except Exception as e:
+            print(f"Error creating collection: {e}")
+            raise e
+        
     def delete_collection(self) -> bool:
         try:
             if not self.client.collection_exists(self.collection_name):

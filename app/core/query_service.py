@@ -199,6 +199,16 @@ class QueryService:
             logger.error(f"Error during ingestion: {e}")
             raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
     
+    def create_collection(self, collection_name: str = 'documents') -> bool:
+        try:
+            result = self.vector_storage.create_collection(collection_name)
+            return True
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                return False
+            else:
+                raise ServiceError(f"Failed to create collection {collection_name}: {str(e)}")
+            
     def get_collection_info(self, collection_name: str = 'documents'):
         try:
             info = self.vector_storage.get_collection_info()
