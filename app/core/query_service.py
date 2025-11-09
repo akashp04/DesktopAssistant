@@ -13,7 +13,7 @@ from storage.pipeline import Pipeline
 from storage.hybrid_searcher import HybridSearch, BM25Search, ExactMatchSearch, RRF
 
 import logging
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 logging.basicConfig(level=logging.INFO)
@@ -198,7 +198,7 @@ class QueryService:
         except Exception as e:
             logger.error(f"Error during ingestion: {e}")
             raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
-    
+        
     def create_collection(self, collection_name: str = 'documents') -> bool:
         try:
             result = self.vector_storage.create_collection(collection_name)
