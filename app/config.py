@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     max_top_k: int = 100
     score_threshold: float = 0.0
 
+    # Watcher settings
+    WATCHER_BATCH_SIZE: int = 5
+    WATCHER_POLL_INTERVAL: float = 30000.0
+
     class Config:
         env_file = ".env"
         case_sensitive = False

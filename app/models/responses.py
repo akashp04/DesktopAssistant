@@ -57,3 +57,15 @@ class HealthResponse(BaseModel):
     collection_name: str
     embedding_model: str
     uptime_seconds: Optional[float] = None
+
+class WatchFolderResponse(BaseModel):
+    message: str
+    folder_path: str
+    status: str
+
+class WatcherStatusResponse(BaseModel):
+    is_running: bool
+    watched_folders: List[str]
+    total_watched_folders: int
+    queue_size: int
+    observer_is_alive: bool

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.config import settings
-from app.api import health, search, ingest, collections
+from app.api import health, search, ingest, collections, watcher
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router)
     app.include_router(ingest.router)
     app.include_router(collections.router)
+    app.include_router(watcher.router)
     
     @app.get("/")
     async def root():

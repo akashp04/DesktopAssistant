@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pydantic import BaseModel
 
 class SearchResult(BaseModel):
@@ -19,3 +19,10 @@ class SearchResult(BaseModel):
 
     class Config:
         from_attributes = True
+
+class WatchedFolderInfo(BaseModel):
+    path: str
+    allowed_extensions: List[str]
+    recursive: bool
+    auto_ingest: bool
+    added_at: float

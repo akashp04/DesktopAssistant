@@ -42,6 +42,19 @@ class QueryService:
             exact_matcher=self.exact_match_search,
             rrf_ranker=self.rrf_ranker
         )
+        
+        self._folder_watcher = None
+    
+    @property
+    def folder_watcher(self):
+        if self._folder_watcher is None:
+            from watchservice.watcherservice import FolderWatcherService
+            self._folder_watcher = FolderWatcherService(
+                query_service=self,
+                batch_size=getattr(settings, 'WATCHER_BATCH_SIZE', 5),
+                poll_interval=getattr(settings, 'WATCHER_POLL_INTERVAL', 30000.0)
+            )
+        return self._folder_watcher
     
     def search(self, request: QueryRequest) -> QueryResponse:
         start = time.monotonic()
@@ -246,4 +259,68 @@ class QueryService:
         except Exception as e:
             logger.error(f"Error deleting collection: {e}")
             raise HTTPException(status_code=500, detail=f"Deleting collection failed: {str(e)}")
+    
+    def start_folder_watching(self) -> Dict[str, Any]:
+        try:
+            self.folder_watcher.start_watching()
+            return {"message": "Folder watching started", "status": "success"}
+        except Exception as e:
+            raise ServiceError(f"Failed to start folder watching: {str(e)}")
+
+    def stop_folder_watching(self) -> Dict[str, Any]:
+        try:
+            self.folder_watcher.stop_watching()
+            return {"message": "Folder watching stopped", "status": "success"}
+        except Exception as e:
+            raise ServiceError(f"Failed to stop folder watching: {str(e)}")
+
+    def add_watch_folder(self, folder_path: str, allowed_extensions: List[str] = None, 
+                        recursive: bool = True, auto_ingest: bool = True) -> Dict[str, Any]:
+        try:
+            success = self.folder_watcher.add_watch_folder(
+                folder_path=folder_path,
+                allowed_extensions=allowed_extensions,
+                recursive=recursive,
+                auto_ingest=auto_ingest
+            )
+            
+            if success:
+                return {
+                    "message": f"Added watch folder: {folder_path}",
+                    "folder_path": folder_path,
+                    "status": "success"
+                }
+            else:
+                raise ServiceError("Failed to add watch folder")
+                
+        except Exception as e:
+            raise ServiceError(f"Failed to add watch folder: {str(e)}")
+
+    def remove_watch_folder(self, folder_path: str) -> Dict[str, Any]:
+        try:
+            success = self.folder_watcher.remove_watch_folder(folder_path)
+            
+            if success:
+                return {
+                    "message": f"Removed watch folder: {folder_path}",
+                    "folder_path": folder_path,
+                    "status": "success"
+                }
+            else:
+                raise ServiceError("Watch folder not found")
+                
+        except Exception as e:
+            raise ServiceError(f"Failed to remove watch folder: {str(e)}")
+
+    def get_folder_watcher_status(self) -> Dict[str, Any]:
+        try:
+            return self.folder_watcher.get_watch_status()
+        except Exception as e:
+            raise ServiceError(f"Failed to get folder watcher status: {str(e)}")
+
+    def get_watched_folders(self) -> List[Dict[str, Any]]:
+        try:
+            return self.folder_watcher.get_watched_folders()
+        except Exception as e:
+            raise ServiceError(f"Failed to get watched folders: {str(e)}")
     

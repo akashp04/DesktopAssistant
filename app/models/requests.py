@@ -23,3 +23,9 @@ class IngestRequest(BaseModel):
     chunk_size: int = Field(400, description="Chunk size for document chunking.", ge=1, le=512)
     overlap: int = Field(100, description="Overlap size for document chunking.", ge=0, le=511)
     max_workers: int = Field(3, description="Number of parallel threads", ge=1, le=8)
+
+class WatchFolderRequest(BaseModel):
+    folder_path: str
+    allowed_extensions: Optional[List[str]] = None
+    recursive: bool = True
+    auto_ingest: bool = True
