@@ -3,7 +3,7 @@ import os
 from typing import List, Optional, Union, Dict, Any
 
 from app.config import settings
-from app.models.requests import QueryRequest, IngestRequest
+from app.models.requests import QueryRequest, IngestRequest, HybridSearchRequest
 from app.models.responses import QueryResponse, IngestResponse, HybridSearchResponse
 from app.models.entities import SearchResult
 from app.core.exceptions import ServiceError, ValidationError
@@ -40,7 +40,9 @@ class QueryService:
             embedding_manager=self.embedding_manager,
             bm25=self.bm25_search,
             exact_matcher=self.exact_match_search,
-            rrf_ranker=self.rrf_ranker
+            rrf_ranker=self.rrf_ranker,
+            reranker_model=settings.reranker_model,
+            reranker_type=settings.reranker_type
         )
         
         self._folder_watcher = None
@@ -98,8 +100,8 @@ class QueryService:
         except Exception as e:
             logger.error(f"Error during search: {e}")
             raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
-    
-    def hybrid_search(self, request: QueryRequest) -> QueryResponse:
+
+    def hybrid_search(self, request: HybridSearchRequest) -> HybridSearchResponse:
         start = time.monotonic()
         try:
             if not self.hybrid_searcher.corpus_built:
@@ -112,7 +114,9 @@ class QueryService:
                 semantic_weight = request.semantic_weight,
                 keyword_weight = request.keyword_weight,
                 exact_weight = request.exact_weight,
-                search_filter = search_filter
+                search_filter = search_filter,
+                use_reranker = request.use_reranker,
+                reranker_top_k = request.reranker_top_k
             )
             end = time.monotonic()
             processing_time_ms = (end - start) * 1000
@@ -120,7 +124,8 @@ class QueryService:
             search_breakdown = {
                 'semantic_matches': len([r for r in results if r.semantic_score > 0]),
                 'keyword_matches': len([r for r in results if r.keyword_score > 0]),
-                'exact_matches': len([r for r in results if r.exact_match_score > 0])
+                'exact_matches': len([r for r in results if r.exact_match_score > 0]),
+                'reranker': len([r for r in results if r.rerank_score > 0])
             }
 
             return HybridSearchResponse(
@@ -128,7 +133,8 @@ class QueryService:
                 results=results,
                 total_results=len(results),
                 processing_time_ms=round(processing_time_ms, 2),
-                search_breakdown=search_breakdown
+                search_breakdown=search_breakdown,
+                reranker_info=self.hybrid_searcher.get_reranker_info()
             )
         except Exception as e:
             raise ServiceError(f"Hybrid search failed: {str(e)}")

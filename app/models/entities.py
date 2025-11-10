@@ -14,7 +14,8 @@ class SearchResult(BaseModel):
     semantic_score: float = 0.0
     keyword_score: float = 0.0
     exact_match_score: float = 0.0
-    final_score: float = 0.0 
+    final_score: float = 0.0
+    rerank_score: float = 0.0
     metadata: Dict[str, Any] = {}
 
     class Config:

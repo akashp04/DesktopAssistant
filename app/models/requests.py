@@ -7,6 +7,8 @@ class QueryRequest(BaseModel):
     score_threshold: float = Field(0.0, description="Minimum score threshold for results.", ge=0.0, le=1.0)
     file_type: Optional[Union[ str, List[str]]] = Field(None, description="Filter results by file extensions (e.g., 'pdf', 'txt').")
     file_name: Optional[Union[str, List[str]]] = Field(None, description="Filter results by file name substring")
+    use_reranker: Optional[bool] = Field(True, description="Whether to use the reranker for refining results.")
+    reranker_top_k: Optional[int] = Field(10, description="Number of top results to return from the reranker.")
 
 class HybridSearchRequest(BaseModel):
     query: str = Field(..., description="The search query", min_length=1)
@@ -16,6 +18,8 @@ class HybridSearchRequest(BaseModel):
     exact_weight: float = Field(2.0, description="Weight for exact matches", ge=0.0, le=10.0)
     file_type: Optional[Union[str, List[str]]] = Field(None, description="Filter by file type")
     file_name: Optional[Union[str, List[str]]] = Field(None, description="Filter by file name")
+    use_reranker: bool = Field(True, description="Whether to use the reranker for refining results.")
+    reranker_top_k: Optional[int] = Field(10, description="Number of top results to return from the reranker.")
 
 class IngestRequest(BaseModel):
     directory_path: str = Field(..., description="Path to the directory to ingest files from.", min_length=1)

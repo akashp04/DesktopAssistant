@@ -4,7 +4,7 @@ Search endpoints
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_query_service
 from app.models.requests import QueryRequest, HybridSearchRequest
-from app.models.responses import QueryResponse
+from app.models.responses import QueryResponse, HybridSearchResponse
 from app.core.query_service import QueryService
 from app.core.exceptions import ServiceError, ValidationError
 
@@ -40,7 +40,7 @@ async def semantic_search(
     except ServiceError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/hybrid", response_model=QueryResponse)
+@router.post("/hybrid", response_model=HybridSearchResponse)
 def hybrid_search(
     request: HybridSearchRequest,
     query_service: QueryService = Depends(get_query_service)

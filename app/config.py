@@ -31,6 +31,16 @@ class Settings(BaseSettings):
     WATCHER_BATCH_SIZE: int = 5
     WATCHER_POLL_INTERVAL: float = 30000.0
 
+    reranker_model: Optional[str] = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_type: str = "cross-encoder"  
+    reranker_enabled: bool = True
+    reranker_batch_size: int = 32
+    reranker_max_length: int = 512
+    
+    reranker_cross_encoder_weight: float = 0.7
+    reranker_rrf_weight: float = 0.2
+    reranker_exact_match_weight: float = 0.1
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

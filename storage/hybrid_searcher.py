@@ -2,10 +2,14 @@ from typing import List, Optional, Dict, Tuple
 from collections import defaultdict, Counter
 import math
 import re
+import logging 
 
 from .embedding_manager import EmbeddingManager
 from .vector_storage import VectorStorage
+from .reranker import HybridReranker, CrossEncoderRanker
 from app.models.entities import SearchResult
+
+logger = logging.getLogger(__name__)
 
 class BM25Search:
     def __init__(self, k1: float = 1.2, b: float = 0.75):
@@ -133,7 +137,8 @@ class RRF:
 
 class HybridSearch:
     def __init__(self, vector_storage: VectorStorage, embedding_manager: EmbeddingManager, 
-                 bm25: BM25Search, exact_matcher: ExactMatchSearch, rrf_ranker: RRF):
+                 bm25: BM25Search, exact_matcher: ExactMatchSearch, rrf_ranker: RRF,
+                 reranker_model: str = None, reranker_type: str = "cross_encoder"):
         self.vector_storage = vector_storage
         self.embedding_manager = embedding_manager
         self.bm25 = bm25
@@ -142,7 +147,19 @@ class HybridSearch:
         self.document_corpus = []
         self.doc_id_mapping = {}
         self.corpus_built = False
-    
+
+        self.reranker = None
+        if reranker_model:
+            try:
+                if reranker_type == "hybrid":
+                    self.reranker = HybridReranker(cross_encoder_model=reranker_model)
+                else:
+                    self.reranker = CrossEncoderRanker(model_name=reranker_model)
+                logger.info(f"Reranker initialized: {reranker_model} ({reranker_type})")
+            except Exception as e:
+                logger.warning(f"Failed to initialize reranker {reranker_model}: {e}")
+                self.reranker = None
+
     def build_keyword_index(self, force_rebuild: bool = False):
         if self.corpus_built and not force_rebuild:
             return
@@ -181,14 +198,20 @@ class HybridSearch:
             print(f"Error building keyword index: {e}")
             raise e
             
-
+    def get_reranker_info(self) -> Optional[Dict[str, str]]:
+        if self.reranker:
+            return self.reranker.get_model_info()
+        return {"reranker": "disabled"}
+    
     def hybrid_search(self, 
                       query: str, 
                       top_k: int = 5, 
                       semantic_weight: float = 1.0, 
                       keyword_weight: float = 1.0, 
                       exact_weight: float = 2.0,
-                      search_filter: Optional[Dict] = None): 
+                      search_filter: Optional[Dict] = None,
+                      use_reranker: bool = True,
+                      reranker_top_k: int = None): 
         
         semantic_results = self._semantic_search(query, top_k * 3, search_filter)
         keyword_results = self._keyword_search(query, top_k * 3)
@@ -205,7 +228,19 @@ class HybridSearch:
             exact_results,
             weights
         )
-        final_results = self._build_final_results(combined_results[:top_k], semantic_results, keyword_results, exact_results)
+        initial_results = self._build_final_results(combined_results[:top_k], 
+                                                  semantic_results, 
+                                                  keyword_results, 
+                                                  exact_results
+                                                )
+        if use_reranker and self.reranker and initial_results:
+            logger.info(f"Reranking top {len(initial_results)} results")
+            final_results = self.reranker.rerank(
+                query=query,
+                results=initial_results,
+                top_k=reranker_top_k
+            )
+        else: final_results = initial_results[:top_k]
         return final_results
 
     def _semantic_search(self, query: str, top_k: int, search_filter: Optional[Dict]) -> List[Tuple[str, float]]:
